@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <array>
+#include <unistd.h>
 #include <utility>
 #include <tuple>
 #include <future>
@@ -11,6 +12,7 @@ using namespace std;
 
 #include <cassert>
 
+#define ASCII
 #define DEBUG
 #ifdef DEBUG
 // #define assertm(exp, msg) assert(((void)msg, exp))
@@ -44,30 +46,57 @@ struct Figur
 
 ostream &operator<<(ostream &os, const Figur &figur)
 {
+#ifndef ASCII
   switch (figur.type)
   {
   case None:
     os << "-";
     break;
   case Turm:
-    os << ((figur.is_white) ? "♖" : "♜");
+    os << ((figur.is_white) ? "♜" : "♖");
     break;
   case Springer:
-    os << ((figur.is_white) ? "♘" : "♞");
+    os << ((figur.is_white) ? "♞" : "♘");
     break;
   case Laeufer:
-    os << ((figur.is_white) ? "♗" : "♝");
+    os << ((figur.is_white) ? "♝" : "♗");
     break;
   case Koenig:
-    os << ((figur.is_white) ? "♔" : "♚");
+    os << ((figur.is_white) ? "♚" : "♔");
     break;
   case Dame:
-    os << ((figur.is_white) ? "♕" : "♛");
+    os << ((figur.is_white) ? "♛" : "♕");
     break;
   case Bauer:
-    os << ((figur.is_white) ? "♙" : "♟");
+    os << ((figur.is_white) ? "♟" : "♙");
     break;
   }
+#else
+  switch (figur.type)
+  {
+  case None:
+    os << "--";
+    break;
+  case Turm:
+    os << ((figur.is_white) ? "wT" : "bT");
+    break;
+  case Springer:
+    os << ((figur.is_white) ? "wS" : "bS");
+    break;
+  case Laeufer:
+    os << ((figur.is_white) ? "wL" : "bL");
+    break;
+  case Koenig:
+    os << ((figur.is_white) ? "wK" : "bK");
+    break;
+  case Dame:
+    os << ((figur.is_white) ? "wD" : "bD");
+    break;
+  case Bauer:
+    os << ((figur.is_white) ? "wD" : "bB");
+    break;
+  }
+#endif
   return os;
 }
 
@@ -88,29 +117,34 @@ private:
                                    {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
                                    {Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer)},
                                    {Figur(Turm), Figur(Springer), Figur(Laeufer), Figur(Dame), Figur(Koenig), Figur(Laeufer), Figur(Springer), Figur(Turm)}}}; // board[y][x]
+
   bool doubleMove = false;
   pair<int, int> pos_king_white = make_pair(4, 0);
   pair<int, int> pos_king_black = make_pair(4, 7);
   int to_x = -1, to_y = -1;
 
-  pair<int, int> get_pos(Figur figur) const = delete;
-  bool is_white_turn() const = delete;
-  bool is_checkmate(bool _white_turn) const = delete;
-  bool is_chess(int y, int x, bool _white_turn) const = delete;
-  bool is_valid(bool _white_turn) const = delete;
-  Board clone() const = delete;
+  // explicit Board(string boardLayout, bool starting_white_turn) = delete;
+
+  // pair<int, int> get_pos(Figur figur) const = delete;
+  // bool is_white_turn() const = delete;
+  // bool is_checkmate(bool _white_turn) const = delete;
+  // bool is_chess(bool _white_turn) = delete;
+  // bool is_valid(bool _white_turn) const = delete;
+  // Board clone() const = delete;
 
   // void operator&() = delete;
   // void operator&&() = delete;
 
   // vector<pair<int, int>> get_all_moves_fast(int x1, int y1, bool _white_turn) const;
+  // vector<pair<int, int>> get_all_moves(int x1, int y1, bool _white_turn) = delete;
   bool is_possible(int x1, int y1, int x2, int y2, bool _white_turn);
+  bool check(int x1, int y1, int x2, int y2, bool _white_turn);
   bool is_possible_without_chess(int x1, int y1, int x2, int y2, bool _white_turn) const;
 
 public:
   explicit Board(bool starting_white_turn);
 
-  vector<pair<int, int>> get_all_moves(int x1, int y1, bool _white_turn);
+  vector<pair<int, int>> get_all_moves_speed(int x1, int y1, bool _white_turn);
 
   bool move(int x1, int y1, int x2, int y2);
   void move_unsafe(int x1, int y1, int x2, int y2);
@@ -141,38 +175,207 @@ ostream &operator<<(ostream &os, const Board &chess)
   return os;
 }
 
-Board::Board(bool starting_white_turn) : bool_white_turn(starting_white_turn) {}
+Board::Board(bool starting_white_turn) : bool_white_turn(starting_white_turn)
+{
+  // bool_white_turn = false;
+  // bool b = false;
+  // board = array<array<Figur, 8>, 8>{{{Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
+  //                                    {Figur(None), Figur(None), Figur(Bauer, b), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
+  //                                    {Figur(None), Figur(None), Figur(None), Figur(Bauer, b), Figur(None), Figur(None), Figur(None), Figur(None)},
+  //                                    {Figur(Koenig, !b), Figur(Bauer, !b), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(Turm, b)},
+  //                                    {Figur(None), Figur(Turm, !b), Figur(None), Figur(None), Figur(None), Figur(Bauer, b), Figur(None), Figur(Koenig, b)},
+  //                                    {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
+  //                                    {Figur(None), Figur(None), Figur(None), Figur(None), Figur(Bauer, !b), Figur(None), Figur(Bauer, !b), Figur(None)},
+  //                                    {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)}}}; // board[y][x]
 
-vector<pair<int, int>> Board::get_all_moves(int x1, int y1, bool _white_turn)
+  // cout << *this << endl;
+
+  // for (int y = 0; y < 8; ++y)
+  //   for (int x = 0; x < 8; ++x)
+  //     if (board[y][x].type == Koenig)
+  //     {
+  //       if (board[y][x].is_white)
+  //         pos_king_white = make_pair(x, y);
+  //       else
+  //         pos_king_black = make_pair(x, y);
+  //     }
+}
+
+vector<pair<int, int>> Board::get_all_moves_speed(int x1, int y1, bool _white_turn)
 {
   vector<pair<int, int>> result;
-  for (int y = 0; y < 8; ++y)
-    for (int x = 0; x < 8; ++x)
-      if (is_possible(x1, y1, x, y, _white_turn))
+  if (_white_turn != board[y1][x1].is_white)
+    return result;
+
+  auto lambda = [&](int x, int y)
+  {
+    const bool success = None == board[y][x].type;
+    if ((success || board[y][x].is_white != _white_turn) && check(x1, y1, x, y, _white_turn))
+      result.push_back({x, y});
+    return success;
+  };
+
+  auto singleLambda = [&](int x, int y)
+  {
+    if (0 <= x && 0 <= y && x < 8 && y < 8 && (None == board[y][x].type || board[y][x].is_white != _white_turn) && check(x1, y1, x, y, _white_turn))
+      result.push_back({x, y});
+  };
+
+  switch (board[y1][x1].type)
+  {
+  case None:
+  {
+    break;
+  }
+  case Turm: // kleine / große Rochade
+  {
+    for (int x = x1 + 1; x < 8; ++x)
+      if (!lambda(x, y1))
+        break;
+
+    for (int x = x1 - 1; x >= 0; --x)
+      if (!lambda(x, y1))
+        break;
+
+    for (int y = y1 + 1; y < 8; ++y)
+      if (!lambda(x1, y))
+        break;
+
+    for (int y = y1 - 1; y >= 0; --y)
+      if (!lambda(x1, y))
+        break;
+    break;
+  }
+  case Dame:
+  {
+    for (int x = x1 + 1; x < 8; ++x)
+      if (!lambda(x, y1))
+        break;
+
+    for (int x = x1 - 1; x >= 0; --x)
+      if (!lambda(x, y1))
+        break;
+
+    for (int y = y1 + 1; y < 8; ++y)
+      if (!lambda(x1, y))
+        break;
+
+    for (int y = y1 - 1; y >= 0; --y)
+      if (!lambda(x1, y))
+        break;
+
+    for (int i = 1; x1 + i < 8 && y1 + i < 8; ++i)
+      if (!lambda(x1 + i, y1 + i))
+        break;
+
+    for (int i = 1; x1 + i < 8 && y1 - i >= 0; ++i)
+      if (!lambda(x1 + i, y1 - i))
+        break;
+
+    for (int i = 1; x1 - i >= 0 && y1 + i < 8; ++i)
+      if (!lambda(x1 - i, y1 + i))
+        break;
+
+    for (int i = 1; x1 - i >= 0 && y1 - i >= 0; ++i)
+      if (!lambda(x1 - i, y1 - i))
+        break;
+    break;
+  }
+  case Laeufer:
+  {
+    for (int i = 1; x1 + i < 8 && y1 + i < 8; ++i)
+      if (!lambda(x1 + i, y1 + i))
+        break;
+
+    for (int i = 1; x1 + i < 8 && y1 - i >= 0; ++i)
+      if (!lambda(x1 + i, y1 - i))
+        break;
+
+    for (int i = 1; x1 - i >= 0 && y1 + i < 8; ++i)
+      if (!lambda(x1 - i, y1 + i))
+        break;
+
+    for (int i = 1; x1 - i >= 0 && y1 - i >= 0; ++i)
+      if (!lambda(x1 - i, y1 - i))
+        break;
+    break;
+  }
+  case Koenig:
+  {
+    singleLambda(x1 - 1, y1 - 1);
+    singleLambda(x1 - 1, y1 + 0);
+    singleLambda(x1 - 1, y1 + 1);
+    singleLambda(x1 + 0, y1 - 1);
+    singleLambda(x1 + 0, y1 + 1);
+    singleLambda(x1 + 1, y1 + 1);
+    singleLambda(x1 + 1, y1 + 0);
+    singleLambda(x1 + 1, y1 - 1);
+
+    break;
+  }
+  case Springer:
+  {
+    singleLambda(x1 + 2, y1 + 1);
+    singleLambda(x1 + 1, y1 + 2);
+    singleLambda(x1 + 2, y1 - 1);
+    singleLambda(x1 + 1, y1 - 2);
+    singleLambda(x1 - 2, y1 + 1);
+    singleLambda(x1 - 1, y1 + 2);
+    singleLambda(x1 - 2, y1 - 1);
+    singleLambda(x1 - 1, y1 - 2);
+
+    break;
+  }
+  case Bauer:
+  {
+    auto pawn1 = [&](int x, int y)
+    {
+      const bool success = (0 <= x && 0 <= y && x < 8 && y < 8 && None == board[y][x].type);
+      if (success && check(x1, y1, x, y, _white_turn))
         result.push_back({x, y});
+      return success;
+    };
+
+    auto pawn2 = [&](int x, int y)
+    {
+      if (0 <= x && 0 <= y && x < 8 && y < 8 && ((None != board[y][x].type && board[y][x].is_white != _white_turn) || (None == board[y][x].type && doubleMove && board[y1][x] == Figur(Bauer, !_white_turn) && to_x == x && to_y == y1)) && check(x1, y1, x, y, _white_turn))
+        result.push_back({x, y});
+    };
+
+    if (_white_turn)
+    {
+      if (pawn1(x1, y1 - 1) && y1 == 6)
+        pawn1(x1, y1 - 2);
+      pawn2(x1 - 1, y1 - 1);
+      pawn2(x1 + 1, y1 - 1);
+    }
+    else
+    {
+      if (pawn1(x1, y1 + 1) && y1 == 1)
+        pawn1(x1, y1 + 2);
+      pawn2(x1 - 1, y1 + 1);
+      pawn2(x1 + 1, y1 + 1);
+    }
+    break;
+  }
+  }
   return result;
 }
 
-// als parameter board !!!!
-bool Board::is_possible(int x1, int y1, int x2, int y2, bool _white_turn)
+bool Board::check(int x1, int y1, int x2, int y2, bool _white_turn)
 {
-  if (is_possible_without_chess(x1, y1, x2, y2, _white_turn))
-  {
-    move_unsafe(x1, y1, x2, y2);
+  move_unsafe(x1, y1, x2, y2);
 
-    const pair<int, int> king = (_white_turn) ? pos_king_black : pos_king_white;
-
-    for (int y = 0; y < 8; ++y)
-      for (int x = 0; x < 8; ++x)
-        if (is_possible_without_chess(x, y, king.first, king.second, !_white_turn))
-        {
-          undoMove();
-          return false;
-        }
-    undoMove();
-    return true;
-  }
-  return false;
+  const pair<int, int> king = (_white_turn) ? pos_king_black : pos_king_white;
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 8; ++x)
+      if (is_possible_without_chess(x, y, king.first, king.second, !_white_turn))
+      {
+        undoMove();
+        return false;
+      }
+  undoMove();
+  return true;
 }
 
 bool Board::is_possible_without_chess(int x1, int y1, int x2, int y2, bool _white_turn) const
@@ -312,29 +515,6 @@ bool Board::is_possible_without_chess(int x1, int y1, int x2, int y2, bool _whit
   return false;
 }
 
-bool Board::move(int x1, int y1, int x2, int y2)
-{
-  if (y1 == y2 && ((x1 == 4 && x2 == 2) || (x1 == 4 && x2 == 6)) && (0 == y1 || 7 == y2))
-  {
-    move_unsafe(x1, y1, x2, y2); // ???
-    move_unsafe(7, y1, 5, y2);
-    bool_white_turn = !bool_white_turn;
-    // return true ???
-  }
-
-  if (Bauer == board[y1][x1].type && ((y2 == 0) || y2 == 7))
-  {
-    board[y2][x2] = Figur(Dame, bool_white_turn);
-    // "q" fehlt
-  }
-
-  bool is_pos = is_possible(x1, y1, x2, y2, bool_white_turn);
-  if (is_pos)
-    move_unsafe(x1, y1, x2, y2);
-
-  return is_pos;
-}
-
 void Board::move_unsafe(int x1, int y1, int x2, int y2)
 {
   history.push(make_tuple(x1, y1, x2, y2, to_x, to_y, doubleMove, board[y2][x2]));
@@ -377,17 +557,61 @@ void Board::undoMove()
 
   to_x = _to_x, to_y = _to_y;
 }
+
+bool Board::is_possible(int x1, int y1, int x2, int y2, bool _white_turn)
+{
+  if (is_possible_without_chess(x1, y1, x2, y2, _white_turn))
+  {
+    move_unsafe(x1, y1, x2, y2);
+
+    const pair<int, int> king = (_white_turn) ? pos_king_black : pos_king_white;
+
+    for (int y = 0; y < 8; ++y)
+      for (int x = 0; x < 8; ++x)
+        if (is_possible_without_chess(x, y, king.first, king.second, !_white_turn))
+        {
+          undoMove();
+          return false;
+        }
+    undoMove();
+    return true;
+  }
+  return false;
+}
+
+bool Board::move(int x1, int y1, int x2, int y2)
+{
+  if (y1 == y2 && ((x1 == 4 && x2 == 2) || (x1 == 4 && x2 == 6)) && (0 == y1 || 7 == y2))
+  {
+    move_unsafe(x1, y1, x2, y2); // ???
+    move_unsafe(7, y1, 5, y2);
+    bool_white_turn = !bool_white_turn;
+    // return true ???
+  }
+
+  if (Bauer == board[y1][x1].type && ((y2 == 0) || y2 == 7))
+  {
+    board[y2][x2] = Figur(Dame, bool_white_turn);
+    // "q" fehlt
+  }
+
+  bool is_pos = is_possible(x1, y1, x2, y2, bool_white_turn);
+  if (is_pos)
+    move_unsafe(x1, y1, x2, y2);
+
+  return is_pos;
+}
 #pragma endregion
 
 #ifdef DEBUG
-constexpr int LIMIT = 5;
+constexpr int LIMIT = 6;
 int k1[LIMIT];
 
 void steptest(Board &b, int n = 0)
 {
   for (int y = 0; y < 8; ++y)
     for (int x = 0; x < 8; ++x)
-      for (auto item : b.get_all_moves(x, y, b.is_white_turn()))
+      for (auto item : b.get_all_moves_speed(x, y, b.is_white_turn()))
       {
         b.move_unsafe(x, y, item.first, item.second);
         if (n < LIMIT - 1)
@@ -403,7 +627,7 @@ vector<int> steptest2(Board b, const int n = 0)
   vector<int> result(LIMIT, 0);
   for (int y = 0; y < 8; ++y)
     for (int x = 0; x < 8; ++x)
-      for (auto item : b.get_all_moves(x, y, b.is_white_turn()))
+      for (auto item : b.get_all_moves_speed(x, y, b.is_white_turn()))
       {
         b.move_unsafe(x, y, item.first, item.second);
         if (n <= 0)
@@ -431,7 +655,7 @@ int main()
 {
   cout << "start ..." << endl;
   Board b(false);
-
+// #define SINGLE
 #ifdef SINGLE
   auto start = std::chrono::system_clock::now();
   steptest(b);
@@ -779,6 +1003,26 @@ int main()
 //   new_board.pos_y_king2 = pos_y_king2;
 //   return new_board;
 // }
+
+// Board::Board(string boardLayout, bool starting_white_turn) : bool_white_turn(starting_white_turn) {}
+
+// vector<pair<int, int>> Board::get_all_moves(int x1, int y1, bool _white_turn)
+// {
+//   vector<pair<int, int>> result;
+//   for (int y = 0; y < 8; ++y)
+//     for (int x = 0; x < 8; ++x)
+//       if (is_possible(x1, y1, x, y, _white_turn))
+//         result.push_back({x, y});
+//   return result;
+// }
 #pragma endregion
 
 // g++ -Wall -Wextra -Wconversion -Wno-unknown-pragmas -Wmaybe-uninitialized -fsanitize=undefined,address -D_GLIBCXX_DEBUG -O2 -g
+
+// 1: 20
+// 2: 400
+// 3: 8902
+// 4: 197281
+// 5: 4865609
+// 6: 119060538 <=> 119,060,324 -> dif: 214
+// 9878 ms
