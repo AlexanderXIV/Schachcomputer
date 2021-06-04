@@ -1,8 +1,22 @@
-// #include <bits/stdc++.h>
-#include "header.hpp"
+// still missing: kleine / große Rochade
 #include <chrono>
+#include <stack>
+#include <vector>
+#include <iostream>
 #include <array>
+#include <utility>
+#include <tuple>
+#include <future>
 using namespace std;
+
+#include <cassert>
+
+#define DEBUG
+#ifdef DEBUG
+// #define assertm(exp, msg) assert(((void)msg, exp))
+#define assertm(exp, msg)
+#else
+#endif
 
 #pragma region Chess
 enum ChessFigure
@@ -20,15 +34,10 @@ struct Figur
 {
   ChessFigure type;
   bool is_white;
-  bool already_moved;
 
-  Figur() = default;
-  explicit Figur(ChessFigure _type, bool _is_white = true, bool _already_moved = false) : type(_type), is_white(_is_white), already_moved(_already_moved){};
+  explicit Figur(ChessFigure _type, bool _is_white = true) : type(_type), is_white(_is_white){};
 
-  Figur clone() const
-  {
-    return Figur(type, is_white, already_moved);
-  }
+  Figur clone() const { return Figur(type, is_white); }
 
   friend ostream &operator<<(ostream &os, const Figur &figur);
 };
@@ -62,62 +71,59 @@ ostream &operator<<(ostream &os, const Figur &figur)
   return os;
 }
 
-bool operator==(const Figur &a, const Figur &b)
-{
-  if (a.type == b.type)
-  {
-    if (None == b.type)
-      return true;
-    else
-      return a.is_white == b.is_white;
-  }
-  return false;
-}
+inline bool operator==(const Figur &a, const Figur &b) { return a.type == b.type && (None == a.type || a.is_white == b.is_white); }
 
-bool operator!=(const Figur &a, const Figur &b)
-{
-  return !(a == b);
-}
+inline bool operator!=(const Figur &a, const Figur &b) { return !(a == b); }
 
-// Rochade, Sonderregel
 class Board
 {
 private:
-public:
+  stack<tuple<int, int, int, int, int, int, bool, Figur>> history;
   bool bool_white_turn;
-  array<array<Figur, 8>, 8> board; // board[y][x]
-  int pos_x_king1 = 4, pos_y_king1 = 0;
-  int pos_x_king2 = 4, pos_y_king2 = 7;
-  int from_x = -1, from_y = -1, to_x = -1, to_y = -1;
+  array<array<Figur, 8>, 8> board{{{Figur(Turm, false), Figur(Springer, false), Figur(Laeufer, false), Figur(Dame, false), Figur(Koenig, false), Figur(Laeufer, false), Figur(Springer, false), Figur(Turm, false)},
+                                   {Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false)},
+                                   {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
+                                   {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
+                                   {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
+                                   {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
+                                   {Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer)},
+                                   {Figur(Turm), Figur(Springer), Figur(Laeufer), Figur(Dame), Figur(Koenig), Figur(Laeufer), Figur(Springer), Figur(Turm)}}}; // board[y][x]
+  bool doubleMove = false;
+  pair<int, int> pos_king_white = make_pair(4, 0);
+  pair<int, int> pos_king_black = make_pair(4, 7);
+  int to_x = -1, to_y = -1;
 
-  explicit Board(bool starting_white_turn);
-
-  int getScore(bool _white_turn) const;
-  pair<int, int> get_pos(Figur figur) const;
-  vector<pair<int, int>> get_all_moves(int x1, int y1, bool _white_turn) const;
-  bool is_possible(int x1, int y1, int x2, int y2, bool _white_turn) const;
-  bool is_possible_without_chess(int x1, int y1, int x2, int y2, bool _white_turn) const;
-  Board clone() const;
-
-  bool move(int x1, int y1, int x2, int y2);
-  void move_unsafe(int x1, int y1, int x2, int y2);
-
-  void undoMove() = delete;
+  pair<int, int> get_pos(Figur figur) const = delete;
   bool is_white_turn() const = delete;
   bool is_checkmate(bool _white_turn) const = delete;
   bool is_chess(int y, int x, bool _white_turn) const = delete;
-  bool is_chess(bool _white_turn) const = delete;
   bool is_valid(bool _white_turn) const = delete;
+  Board clone() const = delete;
 
   // void operator&() = delete;
   // void operator&&() = delete;
+
+  // vector<pair<int, int>> get_all_moves_fast(int x1, int y1, bool _white_turn) const;
+  bool is_possible(int x1, int y1, int x2, int y2, bool _white_turn);
+  bool is_possible_without_chess(int x1, int y1, int x2, int y2, bool _white_turn) const;
+
+public:
+  explicit Board(bool starting_white_turn);
+
+  vector<pair<int, int>> get_all_moves(int x1, int y1, bool _white_turn);
+
+  bool move(int x1, int y1, int x2, int y2);
+  void move_unsafe(int x1, int y1, int x2, int y2);
+  void undoMove();
+
+  int getScore(bool _white_turn) const;
+  bool is_white_turn() { return bool_white_turn; };
 
   friend ostream &operator<<(ostream &os, const Board &board);
 };
 
 ostream &operator<<(ostream &os, const Board &chess)
 {
-  os << "Schachbrett:\n";
   for (int y = 0; y < 8; ++y)
   {
     bool first = true;
@@ -135,16 +141,314 @@ ostream &operator<<(ostream &os, const Board &chess)
   return os;
 }
 
-Board::Board(bool starting_white_turn) : bool_white_turn(starting_white_turn),
-                                         board{{{Figur(Turm, false), Figur(Springer, false), Figur(Laeufer, false), Figur(Dame, false), Figur(Koenig, false), Figur(Laeufer, false), Figur(Springer, false), Figur(Turm, false)},
-                                                {Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false)},
-                                                {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
-                                                {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
-                                                {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
-                                                {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
-                                                {Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer)},
-                                                {Figur(Turm), Figur(Springer), Figur(Laeufer), Figur(Dame), Figur(Koenig), Figur(Laeufer), Figur(Springer), Figur(Turm)}}} {}
+Board::Board(bool starting_white_turn) : bool_white_turn(starting_white_turn) {}
 
+vector<pair<int, int>> Board::get_all_moves(int x1, int y1, bool _white_turn)
+{
+  vector<pair<int, int>> result;
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 8; ++x)
+      if (is_possible(x1, y1, x, y, _white_turn))
+        result.push_back({x, y});
+  return result;
+}
+
+// als parameter board !!!!
+bool Board::is_possible(int x1, int y1, int x2, int y2, bool _white_turn)
+{
+  if (is_possible_without_chess(x1, y1, x2, y2, _white_turn))
+  {
+    move_unsafe(x1, y1, x2, y2);
+
+    const pair<int, int> king = (_white_turn) ? pos_king_black : pos_king_white;
+
+    for (int y = 0; y < 8; ++y)
+      for (int x = 0; x < 8; ++x)
+        if (is_possible_without_chess(x, y, king.first, king.second, !_white_turn))
+        {
+          undoMove();
+          return false;
+        }
+    undoMove();
+    return true;
+  }
+  return false;
+}
+
+bool Board::is_possible_without_chess(int x1, int y1, int x2, int y2, bool _white_turn) const
+{
+  assertm((0 <= x1 && x1 < 8) || (0 <= y1 && y1 < 8) || (0 <= x2 && x2 < 8) || (0 <= y2 && y2 < 8), "OutOfBounds");
+
+  if ((x1 == x2 && y1 == y2) || _white_turn != board[y1][x1].is_white || (None != board[y2][x2].type && board[y1][x1].is_white == board[y2][x2].is_white))
+    return false;
+
+  switch (board[y1][x1].type)
+  {
+  case None:
+    return false;
+  case Turm:
+  {
+    if (x1 == x2)
+    {
+      if (y2 < y1)
+        swap(y1, y2); // y1 <= y2
+
+      for (int y = y1 + 1; y < y2; ++y)
+        if (None != board[y][x1].type)
+          return false;
+      return true;
+    }
+    else if (y1 == y2)
+    {
+      if (x2 < x1)
+        swap(x1, x2); // x1 <= x2
+
+      for (int x = x1 + 1; x < x2; ++x)
+        if (None != board[y1][x].type)
+          return false;
+      return true;
+    }
+    return false;
+  }
+  case Springer:
+  {
+    const int dif_x = abs(x2 - x1);
+    const int dif_y = abs(y2 - y1);
+
+    return (dif_x == 2 && dif_y == 1) || (dif_x == 1 && dif_y == 2);
+  }
+  case Laeufer:
+  {
+    if (x1 > x2)
+    {
+      swap(x1, x2);
+      swap(y1, y2);
+    }
+
+    const int dif_x = x2 - x1;
+    const int dif_y = y2 - y1;
+
+    if (dif_x == dif_y)
+    {
+      for (int i = 1; i < dif_x; ++i)
+        if (None != board[y1 + i][x1 + i].type)
+          return false;
+      return true;
+    }
+    else if (dif_x == -dif_y)
+    {
+      for (int i = 1; i < dif_x; ++i)
+        if (None != board[y1 - i][x1 + i].type)
+          return false;
+      return true;
+    }
+    return false;
+  }
+  case Dame:
+  {
+    if (x1 > x2)
+    {
+      swap(x1, x2);
+      swap(y1, y2);
+    }
+
+    const int dif_x = x2 - x1;
+    const int dif_y = y2 - y1;
+
+    if (x1 == x2)
+    {
+      if (y2 < y1)
+        swap(y1, y2); // y1 <= y2
+
+      for (int y = y1 + 1; y < y2; ++y)
+        if (None != board[y][x1].type)
+          return false;
+      return true;
+    }
+    else if (y1 == y2)
+    {
+      if (x2 < x1)
+        swap(x1, x2); // x1 <= x2
+
+      for (int x = x1 + 1; x < x2; ++x)
+        if (None != board[y1][x].type)
+          return false;
+      return true;
+    }
+    else if (dif_x == dif_y)
+    {
+      for (int i = 1; i < dif_x; ++i)
+        if (None != board[y1 + i][x1 + i].type)
+          return false;
+      return true;
+    }
+    else if (dif_x == -dif_y)
+    {
+      for (int i = 1; i < dif_x; ++i)
+        if (None != board[y1 - i][x1 + i].type)
+          return false;
+      return true;
+    }
+    return false;
+  }
+  case Bauer:
+  {
+    const int dif_x = x2 - x1;
+    const int dif_y = (board[y1][x1].is_white) ? y1 - y2 : y2 - y1;
+
+    if (1 == dif_y)
+    {
+      if (-1 == dif_x || 1 == dif_x)
+        return None != board[y2][x2].type || (doubleMove && board[y1][x1 + dif_x] == Figur(Bauer, !_white_turn) && to_x == x1 + dif_x && to_y == y1);
+      return 0 == dif_x && None == board[y2][x2].type;
+    }
+    else if (2 == dif_y && 0 == dif_x && y1 == ((board[y1][x1].is_white) ? 6 : 1) && None == board[y2][x2].type)
+      return None == board[y1 + ((board[y1][x1].is_white) ? -1 : 1)][x1].type;
+    return false;
+  }
+  case Koenig:
+    return abs(x2 - x1) <= 1 && abs(y2 - y1) <= 1;
+  }
+  return false;
+}
+
+bool Board::move(int x1, int y1, int x2, int y2)
+{
+  if (y1 == y2 && ((x1 == 4 && x2 == 2) || (x1 == 4 && x2 == 6)) && (0 == y1 || 7 == y2))
+  {
+    move_unsafe(x1, y1, x2, y2); // ???
+    move_unsafe(7, y1, 5, y2);
+    bool_white_turn = !bool_white_turn;
+    // return true ???
+  }
+
+  if (Bauer == board[y1][x1].type && ((y2 == 0) || y2 == 7))
+  {
+    board[y2][x2] = Figur(Dame, bool_white_turn);
+    // "q" fehlt
+  }
+
+  bool is_pos = is_possible(x1, y1, x2, y2, bool_white_turn);
+  if (is_pos)
+    move_unsafe(x1, y1, x2, y2);
+
+  return is_pos;
+}
+
+void Board::move_unsafe(int x1, int y1, int x2, int y2)
+{
+  history.push(make_tuple(x1, y1, x2, y2, to_x, to_y, doubleMove, board[y2][x2]));
+
+  doubleMove = (Bauer == board[y1][x1].type && 2 == abs(y1 - y2));
+  bool_white_turn = !bool_white_turn;
+
+  board[y2][x2] = board[y1][x1];
+  board[y1][x1] = Figur(None);
+
+  if (Koenig == board[y2][x2].type)
+  {
+    if (board[y2][x2].is_white)
+      pos_king_black = make_pair(x2, y2);
+    else
+      pos_king_white = make_pair(x2, y2);
+  }
+  to_x = x2, to_y = y2;
+}
+
+void Board::undoMove()
+{
+  int _x1, _y1, _x2, _y2, _to_x, _to_y;
+  Figur f(None);
+  tie(_x1, _y1, _x2, _y2, _to_x, _to_y, doubleMove, f) = history.top();
+  history.pop();
+
+  bool_white_turn = !bool_white_turn;
+
+  if (Koenig == board[_y2][_x2].type)
+  {
+    if (board[_y2][_x2].is_white)
+      pos_king_black = make_pair(_x1, _y1);
+    else
+      pos_king_white = make_pair(_x1, _y1);
+  }
+
+  board[_y1][_x1] = board[_y2][_x2];
+  board[_y2][_x2] = f;
+
+  to_x = _to_x, to_y = _to_y;
+}
+#pragma endregion
+
+#ifdef DEBUG
+constexpr int LIMIT = 5;
+int k1[LIMIT];
+
+void steptest(Board &b, int n = 0)
+{
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 8; ++x)
+      for (auto item : b.get_all_moves(x, y, b.is_white_turn()))
+      {
+        b.move_unsafe(x, y, item.first, item.second);
+        if (n < LIMIT - 1)
+          steptest(b, n + 1);
+        b.undoMove();
+        ++k1[n];
+      }
+}
+
+vector<int> steptest2(Board b, const int n = 0)
+{
+  stack<future<vector<int>>> stck;
+  vector<int> result(LIMIT, 0);
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 8; ++x)
+      for (auto item : b.get_all_moves(x, y, b.is_white_turn()))
+      {
+        b.move_unsafe(x, y, item.first, item.second);
+        if (n <= 0)
+          stck.push(async(steptest2, b, n + 1));
+        else if (n < LIMIT - 1)
+        {
+          int c1 = 0;
+          for (auto item : steptest2(b, n + 1))
+            result[c1++] += item;
+        }
+        b.undoMove();
+        ++result[n];
+      }
+  while (!stck.empty())
+  {
+    int c1 = 0;
+    for (auto item : stck.top().get())
+      result[c1++] += item;
+    stck.pop();
+  }
+  return result;
+}
+
+int main()
+{
+  cout << "start ..." << endl;
+  Board b(false);
+
+#ifdef SINGLE
+  auto start = std::chrono::system_clock::now();
+  steptest(b);
+  auto end = std::chrono::system_clock::now();
+  for (int i = 0; i < LIMIT; ++i)
+    cout << (i + 1) << ": " << k1[i] << endl;
+  cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << endl;
+#else
+  auto start = std::chrono::system_clock::now();
+  auto res = steptest2(b);
+  auto end = std::chrono::system_clock::now();
+  for (int i = 0; i < LIMIT; ++i)
+    cout << (i + 1) << ": " << res[i] << endl;
+  cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << endl;
+#endif
+}
+#else
 #pragma region getScore
 typedef array<array<int, 8>, 8> arr2d;
 arr2d pawn{{{0, 0, 0, 0, 0, 0, 0, 0},
@@ -265,260 +569,6 @@ int Board::getScore(bool _white_turn) const
 }
 #pragma endregion
 
-vector<pair<int, int>> Board::get_all_moves(int x1, int y1, bool _white_turn) const
-{
-  vector<pair<int, int>> result;
-  for (int y = 0; y < 8; ++y)
-    for (int x = 0; x < 8; ++x)
-      if (is_possible(x1, y1, x, y, _white_turn))
-        result.push_back({x, y});
-  return result;
-}
-
-// als parameter board !!!!
-bool Board::is_possible(int x1, int y1, int x2, int y2, bool _white_turn) const
-{
-  if (is_possible_without_chess(x1, y1, x2, y2, _white_turn))
-  {
-    Board my_clone = clone();
-    my_clone.move_unsafe(x1, y1, x2, y2);
-
-    int x_king, y_king;
-    if (_white_turn)
-      x_king = my_clone.pos_x_king2, y_king = my_clone.pos_y_king2;
-    else
-      x_king = my_clone.pos_x_king1, y_king = my_clone.pos_y_king1;
-
-    for (int y = 0; y < 8; ++y)
-      for (int x = 0; x < 8; ++x)
-        if (my_clone.is_possible_without_chess(x, y, x_king, y_king, !_white_turn))
-          return false;
-    return true;
-  }
-  return false;
-}
-
-bool Board::is_possible_without_chess(int x1, int y1, int x2, int y2, bool _white_turn) const
-{
-  if ((0 == x2 - x1 && 0 == y2 - y1) || !((0 <= x1 && x1 < 8) || (0 <= y1 && y1 < 8) || (0 <= x2 && x2 < 8) || (0 <= y2 && y2 < 8)))
-    return false;
-
-  Figur src = board[y1][x1], dest = board[y2][x2];
-  if (None == src.type || _white_turn != src.is_white || (None != dest.type && src.is_white == dest.is_white))
-    return false;
-
-  if (Turm == src.type)
-  {
-    if (x1 == x2)
-    {
-      if (y2 < y1)
-        swap(y1, y2); // y1 <= y2
-
-      for (int y = y1 + 1; y < y2; ++y)
-        if (None != board[y][x1].type)
-          return false;
-      return true;
-    }
-    else if (y1 == y2)
-    {
-      if (x2 < x1)
-        swap(x1, x2); // x1 <= x2
-
-      for (int x = x1 + 1; x < x2; ++x)
-        if (None != board[y1][x].type)
-          return false;
-      return true;
-    }
-    return false;
-  }
-  else if (Springer == src.type)
-  {
-    int dif_x = abs(x2 - x1);
-    int dif_y = abs(y2 - y1);
-
-    return (dif_x == 2 && dif_y == 1) || (dif_x == 1 && dif_y == 2);
-  }
-  else if (Laeufer == src.type)
-  {
-    if (x1 > x2)
-    {
-      swap(x1, x2);
-      swap(y1, y2);
-    }
-
-    int dif_x = x2 - x1;
-    int dif_y = y2 - y1;
-
-    if (dif_x == dif_y)
-    {
-      for (int i = 1; i < dif_x; ++i)
-        if (None != board[y1 + i][x1 + i].type)
-          return false;
-      return true;
-    }
-    else if (dif_x == -dif_y)
-    {
-      for (int i = 1; i < dif_x; ++i)
-        if (None != board[y1 - i][x1 + i].type)
-          return false;
-      return true;
-    }
-    return false;
-  }
-  else if (Dame == src.type)
-  {
-    if (x1 > x2)
-    {
-      swap(x1, x2);
-      swap(y1, y2);
-    }
-
-    int dif_x = x2 - x1;
-    int dif_y = y2 - y1;
-
-    if (x1 == x2)
-    {
-      if (y2 < y1)
-        swap(y1, y2); // y1 <= y2
-
-      for (int y = y1 + 1; y < y2; ++y)
-        if (None != board[y][x1].type)
-          return false;
-      return true;
-    }
-    else if (y1 == y2)
-    {
-      if (x2 < x1)
-        swap(x1, x2); // x1 <= x2
-
-      for (int x = x1 + 1; x < x2; ++x)
-        if (None != board[y1][x].type)
-          return false;
-      return true;
-    }
-    else if (dif_x == dif_y)
-    {
-      for (int i = 1; i < dif_x; ++i)
-        if (None != board[y1 + i][x1 + i].type)
-          return false;
-      return true;
-    }
-    else if (dif_x == -dif_y)
-    {
-      for (int i = 1; i < dif_x; ++i)
-        if (None != board[y1 - i][x1 + i].type)
-          return false;
-      return true;
-    }
-    return false;
-  }
-  else if (Bauer == src.type)
-  {
-    int dif_x = x2 - x1;
-    int dif_y = y2 - y1;
-
-    int first = 1;
-    if (src.is_white)
-    {
-      dif_y = -dif_y;
-      first = 7 - first;
-    }
-
-    if (dif_y == 1)
-    {
-      if (-1 == dif_x || 1 == dif_x)
-        return None != dest.type || (board[y1][x1 + dif_x] == Figur(Bauer, !_white_turn) && to_x == from_x && from_x == x1 + dif_x && to_y == y1 && abs(from_y - to_y) == 2);
-      else if (0 == dif_x && None == dest.type)
-        return true;
-    }
-
-    if (dif_y == 2)
-      if (0 == dif_x && y1 == first && None == dest.type)
-        return None == board[y1 + (y2 - y1) / 2][x1].type;
-
-    return false;
-  }
-  else if (Koenig == src.type)
-    return !(abs(x2 - x1) > 1 || abs(y2 - y1) > 1);
-  return false;
-}
-
-bool Board::move(int x1, int y1, int x2, int y2)
-{
-  if (y1 == y2 && ((x1 == 4 && x2 == 2) || (x1 == 4 && x2 == 6)) && (0 == y1 || 7 == y2))
-  {
-    move_unsafe(x1, y1, x2, y2);
-    move_unsafe(7, y1, 5, y2);
-    bool_white_turn = !bool_white_turn;
-  }
-
-  if (Bauer == board[y1][x1].type && ((y2 == 0) || y2 == 7))
-  {
-    board[y2][x2] = Figur(Dame, bool_white_turn);
-    // "q" fehlt
-  }
-
-  bool is_pos = is_possible(x1, y1, x2, y2, bool_white_turn);
-  if (is_pos)
-    move_unsafe(x1, y1, x2, y2);
-
-  return is_pos;
-}
-
-void Board::move_unsafe(int x1, int y1, int x2, int y2)
-{
-  bool_white_turn = !bool_white_turn;
-
-  board[y2][x2] = board[y1][x1];
-  board[y2][x2].already_moved = true;
-  board[y1][x1] = Figur(None);
-
-  if (Koenig == board[y2][x2].type)
-  {
-    if (board[y2][x2].is_white)
-      pos_x_king2 = x2, pos_y_king2 = y2;
-    else
-      pos_x_king1 = x2, pos_y_king1 = y2;
-  }
-  from_x = x1, from_y = y1, to_x = x2, to_y = y2;
-}
-
-Board Board::clone() const
-{
-  Board new_board(bool_white_turn);
-  for (int y = 0; y < 8; ++y)
-    for (int x = 0; x < 8; ++x)
-      new_board.board[y][x] = board[y][x].clone();
-  new_board.pos_x_king1 = pos_x_king1;
-  new_board.from_x = from_x;
-  new_board.from_y = from_y;
-  new_board.to_x = to_x;
-  new_board.to_y = to_y;
-  new_board.pos_x_king2 = pos_x_king2;
-  new_board.pos_y_king1 = pos_y_king1;
-  new_board.pos_y_king2 = pos_y_king2;
-  return new_board;
-}
-#pragma endregion
-
-#pragma region Test
-static constexpr int LIMIT = 4;
-static int k1[LIMIT];
-void steptest(const Board &b, int n = 0)
-{
-  for (int y = 0; y < 8; ++y)
-    for (int x = 0; x < 8; ++x)
-      for (auto item : b.get_all_moves(x, y, b.bool_white_turn))
-      {
-        Board f = b.clone();
-        f.move_unsafe(x, y, item.first, item.second);
-        if (n < LIMIT - 1)
-          steptest(f, n + 1);
-        ++k1[n];
-      }
-}
-#pragma endregion
-
 #pragma region KI
 static int counter = 0;
 typedef pair<pair<int, int>, pair<int, int>> piiii;
@@ -571,100 +621,164 @@ pair<long long, piiii> minimax(const Board &node, int depth, bool maximizingPlay
 }
 #pragma endregion
 
-// int main()
-// {
-//   Board b(true);
-//   bool state = false;
-//   while (true)
-//   {
-//     string s;
-//     if (getline(cin, s))
-//     {
-//       cout << "#" << s << endl;
-//       if (s == "xboard")
-//         cout << "\n";
-//       else if (s == "protover 2")
-//         cout << "feature usermove=1 done=1\n";
-//       else if (s == "new")
-//         b = Board(true);
-//       else if (s == "quit")
-//         return 0;
-//       else if (s.rfind("usermove", 0) == 0)
-//       {
-//         bool success = b.move((int)(s[9] - 'a'), 7 - (int)(s[10] - '1'), (int)(s[11] - 'a'), 7 - (int)(s[12] - '1'));
-
-//         // auto result = ki(b);
-//         // pair<pair<int, int>, pair<int, int>> result;
-//         // ki2(b, result);
-//         if (state)
-//         {
-//           auto res1 = minimax(b, 4);
-//           piiii result = res1.second;
-//           // cout << "# " << success << ", score: " << res1.first << "\n";
-//           cout << "# score: " << res1.first << ", counter: " << counter << "\n";
-//           b.move(result.first.first, result.first.second, result.second.first, result.second.second);
-//           int x1, y1, x2, y2;
-//           tie(x1, y1) = result.first;
-//           tie(x2, y2) = result.second;
-
-//           cout << "move " << (char)('a' + (x1)) << (char)('1' + 7 - y1) << (char)('a' + (x2)) << char('1' + 7 - y2) << "\n";
-//           cout << "info depth 5 seldepth 5 multipv 1 score cp 54 nodes 1664 nps 151272 tbhits 0 time 11 pv e2e4 d7d5 e4e5 e7e6 d2d4" << endl;
-//         }
-//         else
-//         {
-//           cout << "# NIX" << endl;
-//         }
-//       }
-//       else if (s == "force")
-//       {
-//         cout << "# SET FALSE " << endl;
-//         state = false;
-//       }
-//       else if (s == "go")
-//       {
-//         cout << "# SET TRUE " << endl;
-//         state = true;
-//         // int x1, y1, x2, y2;
-//         // x1 = 4;
-//         // y1 = 6;
-//         // x2 = 4;
-//         // y2 = 4;
-//         // b.move(x1, y1, x2, y2);
-//         // cout << "move " << (char)('a' + (x1)) << (char)('1' + 7 - y1) << (char)('a' + (x2)) << char('1' + 7 - y2) << "\n";
-//         {
-//           auto res1 = minimax(b, 5);
-//           piiii result = res1.second;
-//           cout << "# "
-//                << "1"
-//                << ", score: " << res1.first << "\n";
-//           b.move(result.first.first, result.first.second, result.second.first, result.second.second);
-//           int x1, y1, x2, y2;
-//           tie(x1, y1) = result.first;
-//           tie(x2, y2) = result.second;
-
-//           cout << "move " << (char)('a' + (x1)) << (char)('1' + 7 - y1) << (char)('a' + (x2)) << char('1' + 7 - y2) << "\n";
-//         }
-//       }
-
-//       cout << flush;
-//     }
-//   }
-// }
-
 int main()
 {
-  // cout << "start" << endl;
-  Board b(false);
-  // cout << b.getScore(true) << endl;
-  // cout << b.getScore(false) << endl;
+  Board b(true);
+  bool state = false;
+  while (true)
+  {
+    string s;
+    if (getline(cin, s))
+    {
+      cout << "#" << s << endl;
+      if (s == "xboard")
+        cout << "\n";
+      else if (s == "protover 2")
+        cout << "feature usermove=1 done=1\n";
+      else if (s == "new")
+        b = Board(true);
+      else if (s == "quit")
+        return 0;
+      else if (s.rfind("usermove", 0) == 0)
+      {
+        bool success = b.move((int)(s[9] - 'a'), 7 - (int)(s[10] - '1'), (int)(s[11] - 'a'), 7 - (int)(s[12] - '1'));
 
-  auto start = std::chrono::system_clock::now();
-  steptest(b);
-  auto end = std::chrono::system_clock::now();
-  cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << endl;
+        // auto result = ki(b);
+        // pair<pair<int, int>, pair<int, int>> result;
+        // ki2(b, result);
+        if (state)
+        {
+          auto res1 = minimax(b, 4);
+          piiii result = res1.second;
+          // cout << "# " << success << ", score: " << res1.first << "\n";
+          cout << "# score: " << res1.first << ", counter: " << counter << "\n";
+          b.move(result.first.first, result.first.second, result.second.first, result.second.second);
+          int x1, y1, x2, y2;
+          tie(x1, y1) = result.first;
+          tie(x2, y2) = result.second;
 
-  for (int i = 0; i < LIMIT; ++i)
-    cout << (i + 1) << ": " << k1[i] << endl;
+          cout << "move " << (char)('a' + (x1)) << (char)('1' + 7 - y1) << (char)('a' + (x2)) << char('1' + 7 - y2) << "\n";
+          cout << "info depth 5 seldepth 5 multipv 1 score cp 54 nodes 1664 nps 151272 tbhits 0 time 11 pv e2e4 d7d5 e4e5 e7e6 d2d4" << endl;
+        }
+        else
+        {
+          cout << "# NIX" << endl;
+        }
+      }
+      else if (s == "force")
+      {
+        cout << "# SET FALSE " << endl;
+        state = false;
+      }
+      else if (s == "go")
+      {
+        cout << "# SET TRUE " << endl;
+        state = true;
+        // int x1, y1, x2, y2;
+        // x1 = 4;
+        // y1 = 6;
+        // x2 = 4;
+        // y2 = 4;
+        // b.move(x1, y1, x2, y2);
+        // cout << "move " << (char)('a' + (x1)) << (char)('1' + 7 - y1) << (char)('a' + (x2)) << char('1' + 7 - y2) << "\n";
+        {
+          auto res1 = minimax(b, 5);
+          piiii result = res1.second;
+          cout << "# "
+               << "1"
+               << ", score: " << res1.first << "\n";
+          b.move(result.first.first, result.first.second, result.second.first, result.second.second);
+          int x1, y1, x2, y2;
+          tie(x1, y1) = result.first;
+          tie(x2, y2) = result.second;
 
-  // cout << "end" << endl;
+          cout << "move " << (char)('a' + (x1)) << (char)('1' + 7 - y1) << (char)('a' + (x2)) << char('1' + 7 - y2) << "\n";
+        }
+      }
+
+      cout << flush;
+    }
+  }
 }
+#endif
+
+#pragma region garbage
+// vector<pair<int, int>> Board::get_all_moves_fast(int x1, int y1, bool _white_turn) const
+// {
+//   bool needDetail = false, needDetailKNOW = false;
+//   vector<pair<int, int>> result;
+//   for (int y = 0; y < 8; ++y)
+//     for (int x = 0; x < 8; ++x)
+//       if (is_possible_without_chess(x1, y1, x, y, _white_turn))
+//       {
+//         if (!needDetailKNOW)
+//         {
+//           Board my_clone = clone();
+//           if (Koenig != my_clone.board[y1][x1].type)
+//           {
+//             my_clone.board[y1][x1] = Figur(None);
+
+//             int x_king, y_king;
+//             if (_white_turn)
+//               x_king = my_clone.pos_x_king2, y_king = my_clone.pos_y_king2;
+//             else
+//               x_king = my_clone.pos_x_king1, y_king = my_clone.pos_y_king1;
+
+//             for (int ys = 0; ys < 8 && !needDetail; ++ys)
+//               for (int xs = 0; xs < 8; ++xs)
+//                 if (my_clone.is_possible_without_chess(xs, ys, x_king, y_king, !_white_turn))
+//                 {
+//                   needDetail = true;
+//                   break;
+//                 }
+//           }
+//           else
+//             needDetail = true;
+//           needDetailKNOW = true;
+//         }
+
+//         bool success = true;
+//         if (needDetail)
+//         {
+//           Board my_clone = clone();
+//           my_clone.move_unsafe(x1, y1, x, y);
+
+//           int x_king, y_king;
+//           if (_white_turn)
+//             x_king = my_clone.pos_x_king2, y_king = my_clone.pos_y_king2;
+//           else
+//             x_king = my_clone.pos_x_king1, y_king = my_clone.pos_y_king1;
+
+//           for (int ys = 0; ys < 8 && success; ++ys)
+//             for (int xs = 0; xs < 8; ++xs)
+//               if (my_clone.is_possible_without_chess(xs, ys, x_king, y_king, !_white_turn))
+//               {
+//                 success = false;
+//                 break;
+//               }
+//         }
+//         if (success)
+//           result.push_back({x, y});
+//       }
+//   return result;
+// }
+
+// Board Board::clone() const
+// {
+//   Board new_board(bool_white_turn);
+//   for (int y = 0; y < 8; ++y)
+//     for (int x = 0; x < 8; ++x)
+//       new_board.board[y][x] = board[y][x].clone();
+//   new_board.pos_x_king1 = pos_x_king1;
+//   new_board.from_x = from_x;
+//   new_board.from_y = from_y;
+//   new_board.to_x = to_x;
+//   new_board.to_y = to_y;
+//   new_board.pos_x_king2 = pos_x_king2;
+//   new_board.pos_y_king1 = pos_y_king1;
+//   new_board.pos_y_king2 = pos_y_king2;
+//   return new_board;
+// }
+#pragma endregion
+
+// g++ -Wall -Wextra -Wconversion -Wno-unknown-pragmas -Wmaybe-uninitialized -fsanitize=undefined,address -D_GLIBCXX_DEBUG -O2 -g
