@@ -519,6 +519,12 @@ void Board::move_unsafe(int x1, int y1, int x2, int y2)
 {
   history.push(make_tuple(x1, y1, x2, y2, to_x, to_y, doubleMove, board[y2][x2]));
 
+  // en passant
+  if (1 == abs(y2 -  y1) && 1 == abs(x2 - x1) && Bauer == board[y1][x1].type && None == board[y2][x2].type)
+    board[y1][x2] = Figur(None);
+
+  // if Rochade
+
   doubleMove = (Bauer == board[y1][x1].type && 2 == abs(y1 - y2));
   bool_white_turn = !bool_white_turn;
 
@@ -541,6 +547,10 @@ void Board::undoMove()
   Figur f(None);
   tie(_x1, _y1, _x2, _y2, _to_x, _to_y, doubleMove, f) = history.top();
   history.pop();
+
+  // en passant
+  if (1 == abs(_y2 -  _y1) && 1 == abs(_x2 - _x1) && Bauer == board[_y2][_x2].type && None == f.type)
+    board[_y1][_x2] = Figur(Bauer, !board[_y2][_x2].is_white);
 
   bool_white_turn = !bool_white_turn;
 
@@ -671,6 +681,8 @@ int main()
     cout << (i + 1) << ": " << res[i] << endl;
   cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << endl;
 #endif
+  int i;
+  cin >> i;
 }
 #else
 #pragma region getScore
@@ -1024,5 +1036,5 @@ int main()
 // 3: 8902
 // 4: 197281
 // 5: 4865609
-// 6: 119060538 <=> 119,060,324 -> dif: 214
-// 9878 ms
+// 6: 119,060,324
+// 11616 ms
