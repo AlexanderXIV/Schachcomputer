@@ -1,10 +1,9 @@
-// still missing: kleine / große Rochade
+// still missing: Promotions
 #include <chrono>
 #include <stack>
 #include <vector>
 #include <iostream>
 #include <array>
-#include <unistd.h>
 #include <utility>
 #include <tuple>
 #include <future>
@@ -15,9 +14,9 @@ using namespace std;
 #define ASCII
 #define DEBUG
 #ifdef DEBUG
-// #define assertm(exp, msg) assert(((void)msg, exp))
-#define assertm(exp, msg)
+#define assertm(exp, msg) assert(((void)msg, exp))
 #else
+#define assertm(exp, msg)
 #endif
 
 #pragma region Chess
@@ -93,7 +92,7 @@ ostream &operator<<(ostream &os, const Figur &figur)
     os << ((figur.is_white) ? "wD" : "bD");
     break;
   case Bauer:
-    os << ((figur.is_white) ? "wD" : "bB");
+    os << ((figur.is_white) ? "wB" : "bB");
     break;
   }
 #endif
@@ -107,7 +106,7 @@ inline bool operator!=(const Figur &a, const Figur &b) { return !(a == b); }
 class Board
 {
 private:
-  stack<tuple<int, int, int, int, int, int, bool, Figur>> history;
+  stack<tuple<int, int, int, int, int, int, bool, Figur, bool, bool, bool, bool>> history;
   bool bool_white_turn;
   array<array<Figur, 8>, 8> board{{{Figur(Turm, false), Figur(Springer, false), Figur(Laeufer, false), Figur(Dame, false), Figur(Koenig, false), Figur(Laeufer, false), Figur(Springer, false), Figur(Turm, false)},
                                    {Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false)},
@@ -122,6 +121,7 @@ private:
   pair<int, int> pos_king_white = make_pair(4, 0);
   pair<int, int> pos_king_black = make_pair(4, 7);
   int to_x = -1, to_y = -1;
+  bool lca[2]{true, true}, sca[2]{true, true}; // large castle_allowed {black, white}
 
   // explicit Board(string boardLayout, bool starting_white_turn) = delete;
 
@@ -137,8 +137,9 @@ private:
 
   // vector<pair<int, int>> get_all_moves_fast(int x1, int y1, bool _white_turn) const;
   // vector<pair<int, int>> get_all_moves(int x1, int y1, bool _white_turn) = delete;
-  bool is_possible(int x1, int y1, int x2, int y2, bool _white_turn);
+  // bool is_possible(int x1, int y1, int x2, int y2, bool _white_turn);
   bool check(int x1, int y1, int x2, int y2, bool _white_turn);
+  bool is_chess(int x1, int y1, bool _white_turn) const;
   bool is_possible_without_chess(int x1, int y1, int x2, int y2, bool _white_turn) const;
 
 public:
@@ -146,7 +147,7 @@ public:
 
   vector<pair<int, int>> get_all_moves_speed(int x1, int y1, bool _white_turn);
 
-  bool move(int x1, int y1, int x2, int y2);
+  // bool move(int x1, int y1, int x2, int y2);
   void move_unsafe(int x1, int y1, int x2, int y2);
   void undoMove();
 
@@ -177,28 +178,37 @@ ostream &operator<<(ostream &os, const Board &chess)
 
 Board::Board(bool starting_white_turn) : bool_white_turn(starting_white_turn)
 {
-  // bool_white_turn = false;
-  // bool b = false;
-  // board = array<array<Figur, 8>, 8>{{{Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
-  //                                    {Figur(None), Figur(None), Figur(Bauer, b), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
-  //                                    {Figur(None), Figur(None), Figur(None), Figur(Bauer, b), Figur(None), Figur(None), Figur(None), Figur(None)},
-  //                                    {Figur(Koenig, !b), Figur(Bauer, !b), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(Turm, b)},
-  //                                    {Figur(None), Figur(Turm, !b), Figur(None), Figur(None), Figur(None), Figur(Bauer, b), Figur(None), Figur(Koenig, b)},
+  //   bool_white_turn = true;
+  //   bool b = false;
+  // board = array<array<Figur, 8>, 8>{{{Figur(Turm, false), Figur(None), Figur(None), Figur(None), Figur(Koenig, false), Figur(None), Figur(None), Figur(Turm, false)},
+  //                                    {Figur(Bauer, false), Figur(None), Figur(Bauer, false), Figur(Bauer, false), Figur(Dame, false), Figur(Bauer, false), Figur(Laeufer, false), Figur(None)},
+  //                                    {Figur(Laeufer, false), Figur(Springer, false), Figur(None), Figur(None), Figur(Bauer, false), Figur(Springer, false), Figur(Bauer, false), Figur(None)},
+  //                                    {Figur(None), Figur(None), Figur(None), Figur(Bauer), Figur(Springer), Figur(None), Figur(None), Figur(None)},
+  //                                    {Figur(None), Figur(Bauer, false), Figur(None), Figur(None), Figur(Bauer), Figur(None), Figur(None), Figur(None)},
+  //                                    {Figur(None), Figur(None), Figur(Springer), Figur(None), Figur(None), Figur(Dame), Figur(None), Figur(Bauer, false)},
+  //                                    {Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Laeufer), Figur(Laeufer), Figur(Bauer), Figur(Bauer), Figur(Bauer)},
+  //                                    {Figur(Turm), Figur(None), Figur(None), Figur(None), Figur(Koenig), Figur(None), Figur(None), Figur(Turm)}}};
+
+  // board = array<array<Figur, 8>, 8>{{{Figur(Turm, false), Figur(Springer, false), Figur(Laeufer, false), Figur(Dame, false), Figur(Koenig, false), Figur(Laeufer, false), Figur(Springer, false), Figur(Turm, false)},
+  //                                    {Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false), Figur(Bauer, false)},
   //                                    {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
-  //                                    {Figur(None), Figur(None), Figur(None), Figur(None), Figur(Bauer, !b), Figur(None), Figur(Bauer, !b), Figur(None)},
-  //                                    {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)}}}; // board[y][x]
+  //                                    {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
+  //                                    {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
+  //                                    {Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None), Figur(None)},
+  //                                    {Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer), Figur(Bauer)},
+  //                                    {Figur(Turm), Figur(None), Figur(None), Figur(None), Figur(Koenig), Figur(None), Figur(None), Figur(Turm)}}};
 
-  // cout << *this << endl;
+  cout << *this << endl;
 
-  // for (int y = 0; y < 8; ++y)
-  //   for (int x = 0; x < 8; ++x)
-  //     if (board[y][x].type == Koenig)
-  //     {
-  //       if (board[y][x].is_white)
-  //         pos_king_white = make_pair(x, y);
-  //       else
-  //         pos_king_black = make_pair(x, y);
-  //     }
+  //   for (int y = 0; y < 8; ++y)
+  //     for (int x = 0; x < 8; ++x)
+  //       if (Koenig == board[y][x].type)
+  //       {
+  //         if (!board[y][x].is_white)
+  //           pos_king_white = make_pair(x, y);
+  //         else
+  //           pos_king_black = make_pair(x, y);
+  //       }
 }
 
 vector<pair<int, int>> Board::get_all_moves_speed(int x1, int y1, bool _white_turn)
@@ -227,7 +237,7 @@ vector<pair<int, int>> Board::get_all_moves_speed(int x1, int y1, bool _white_tu
   {
     break;
   }
-  case Turm: // kleine / große Rochade
+  case Turm:
   {
     for (int x = x1 + 1; x < 8; ++x)
       if (!lambda(x, y1))
@@ -300,7 +310,7 @@ vector<pair<int, int>> Board::get_all_moves_speed(int x1, int y1, bool _white_tu
         break;
     break;
   }
-  case Koenig:
+  case Koenig: // kleine / große Rochade
   {
     singleLambda(x1 - 1, y1 - 1);
     singleLambda(x1 - 1, y1 + 0);
@@ -310,6 +320,16 @@ vector<pair<int, int>> Board::get_all_moves_speed(int x1, int y1, bool _white_tu
     singleLambda(x1 + 1, y1 + 1);
     singleLambda(x1 + 1, y1 + 0);
     singleLambda(x1 + 1, y1 - 1);
+
+    if (0 <= x1 + 2 && x1 + 2 < 8 && sca[board[y1][x1].is_white] &&
+        !is_chess(x1, y1, board[y1][x1].is_white) && !is_chess(x1 + 1, y1, board[y1][x1].is_white) && !is_chess(x1 + 2, y1, board[y1][x1].is_white) &&
+        None == board[y1][x1 + 1].type && None == board[y1][x1 + 2].type)
+      result.push_back({(x1 + 2), y1});
+
+    if (0 <= x1 - 2 && x1 - 2 < 8 && lca[board[y1][x1].is_white] &&
+        !is_chess(x1, y1, board[y1][x1].is_white) && !is_chess(x1 - 1, y1, board[y1][x1].is_white) && !is_chess(x1 - 2, y1, board[y1][x1].is_white) &&
+        None == board[y1][x1 - 1].type && None == board[y1][x1 - 2].type && None == board[y1][x1 - 3].type)
+      result.push_back({(x1 - 2), y1});
 
     break;
   }
@@ -376,6 +396,15 @@ bool Board::check(int x1, int y1, int x2, int y2, bool _white_turn)
       }
   undoMove();
   return true;
+}
+
+bool Board::is_chess(int x1, int y1, bool _white_turn) const
+{
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 8; ++x)
+      if (is_possible_without_chess(x, y, x1, y1, !_white_turn))
+        return true;
+  return false;
 }
 
 bool Board::is_possible_without_chess(int x1, int y1, int x2, int y2, bool _white_turn) const
@@ -517,13 +546,32 @@ bool Board::is_possible_without_chess(int x1, int y1, int x2, int y2, bool _whit
 
 void Board::move_unsafe(int x1, int y1, int x2, int y2)
 {
-  history.push(make_tuple(x1, y1, x2, y2, to_x, to_y, doubleMove, board[y2][x2]));
+  history.push(make_tuple(x1, y1, x2, y2, to_x, to_y, doubleMove, board[y2][x2], lca[0], lca[1], sca[0], sca[1]));
 
   // en passant
-  if (1 == abs(y2 -  y1) && 1 == abs(x2 - x1) && Bauer == board[y1][x1].type && None == board[y2][x2].type)
+  if (1 == abs(y2 - y1) && 1 == abs(x2 - x1) && Bauer == board[y1][x1].type && None == board[y2][x2].type)
     board[y1][x2] = Figur(None);
 
-  // if Rochade
+  // Rochade
+  if (Koenig == board[y1][x1].type)
+  {
+    if (2 == abs(x2 - x1))
+    {
+      if (x1 < x2)
+        swap(board[y1][5], board[y1][7]);
+      else
+        swap(board[y1][3], board[y1][0]);
+    }
+    lca[board[y1][x1].is_white] = false, sca[board[y1][x1].is_white] = false;
+  }
+
+  if (Turm == board[y1][x1].type)
+  {
+    if (x1 == 0)
+      lca[board[y1][x1].is_white] = false;
+    else if (x1 == 7)
+      sca[board[y1][x1].is_white] = false;
+  }
 
   doubleMove = (Bauer == board[y1][x1].type && 2 == abs(y1 - y2));
   bool_white_turn = !bool_white_turn;
@@ -545,12 +593,24 @@ void Board::undoMove()
 {
   int _x1, _y1, _x2, _y2, _to_x, _to_y;
   Figur f(None);
-  tie(_x1, _y1, _x2, _y2, _to_x, _to_y, doubleMove, f) = history.top();
+  bool b1, b2, b3, b4;
+  tie(_x1, _y1, _x2, _y2, _to_x, _to_y, doubleMove, f, b1, b2, b3, b4) = history.top();
   history.pop();
 
+  lca[0] = b1, lca[1] = b2, sca[0] = b3, sca[1] = b4;
+
   // en passant
-  if (1 == abs(_y2 -  _y1) && 1 == abs(_x2 - _x1) && Bauer == board[_y2][_x2].type && None == f.type)
+  if (1 == abs(_y2 - _y1) && 1 == abs(_x2 - _x1) && Bauer == board[_y2][_x2].type && None == f.type)
     board[_y1][_x2] = Figur(Bauer, !board[_y2][_x2].is_white);
+
+  // Rochade
+  if (Koenig == board[_y2][_x2].type && 2 == abs(_x2 - _x1))
+  {
+    if (_x1 < _x2)
+      swap(board[_y1][5], board[_y1][7]);
+    else
+      swap(board[_y1][3], board[_y1][0]);
+  }
 
   bool_white_turn = !bool_white_turn;
 
@@ -567,88 +627,32 @@ void Board::undoMove()
 
   to_x = _to_x, to_y = _to_y;
 }
-
-bool Board::is_possible(int x1, int y1, int x2, int y2, bool _white_turn)
-{
-  if (is_possible_without_chess(x1, y1, x2, y2, _white_turn))
-  {
-    move_unsafe(x1, y1, x2, y2);
-
-    const pair<int, int> king = (_white_turn) ? pos_king_black : pos_king_white;
-
-    for (int y = 0; y < 8; ++y)
-      for (int x = 0; x < 8; ++x)
-        if (is_possible_without_chess(x, y, king.first, king.second, !_white_turn))
-        {
-          undoMove();
-          return false;
-        }
-    undoMove();
-    return true;
-  }
-  return false;
-}
-
-bool Board::move(int x1, int y1, int x2, int y2)
-{
-  if (y1 == y2 && ((x1 == 4 && x2 == 2) || (x1 == 4 && x2 == 6)) && (0 == y1 || 7 == y2))
-  {
-    move_unsafe(x1, y1, x2, y2); // ???
-    move_unsafe(7, y1, 5, y2);
-    bool_white_turn = !bool_white_turn;
-    // return true ???
-  }
-
-  if (Bauer == board[y1][x1].type && ((y2 == 0) || y2 == 7))
-  {
-    board[y2][x2] = Figur(Dame, bool_white_turn);
-    // "q" fehlt
-  }
-
-  bool is_pos = is_possible(x1, y1, x2, y2, bool_white_turn);
-  if (is_pos)
-    move_unsafe(x1, y1, x2, y2);
-
-  return is_pos;
-}
 #pragma endregion
 
 #ifdef DEBUG
-constexpr int LIMIT = 6;
-int k1[LIMIT];
+int LIMIT = 0;
 
-void steptest(Board &b, int n = 0)
+vector<unsigned long> steptest2(Board b, const int n = 0)
 {
+  stack<future<vector<unsigned long>>> stck;
+  vector<unsigned long> result(LIMIT, 0);
   for (int y = 0; y < 8; ++y)
     for (int x = 0; x < 8; ++x)
       for (auto item : b.get_all_moves_speed(x, y, b.is_white_turn()))
       {
-        b.move_unsafe(x, y, item.first, item.second);
         if (n < LIMIT - 1)
-          steptest(b, n + 1);
-        b.undoMove();
-        ++k1[n];
-      }
-}
-
-vector<int> steptest2(Board b, const int n = 0)
-{
-  stack<future<vector<int>>> stck;
-  vector<int> result(LIMIT, 0);
-  for (int y = 0; y < 8; ++y)
-    for (int x = 0; x < 8; ++x)
-      for (auto item : b.get_all_moves_speed(x, y, b.is_white_turn()))
-      {
-        b.move_unsafe(x, y, item.first, item.second);
-        if (n <= 0)
-          stck.push(async(steptest2, b, n + 1));
-        else if (n < LIMIT - 1)
         {
-          int c1 = 0;
-          for (auto item : steptest2(b, n + 1))
-            result[c1++] += item;
+          b.move_unsafe(x, y, item.first, item.second);
+          if (n == 0)
+            stck.push(async(steptest2, b, n + 1));
+          else
+          {
+            int c1 = 0;
+            for (auto item : steptest2(b, n + 1))
+              result[c1++] += item;
+          }
+          b.undoMove();
         }
-        b.undoMove();
         ++result[n];
       }
   while (!stck.empty())
@@ -661,30 +665,84 @@ vector<int> steptest2(Board b, const int n = 0)
   return result;
 }
 
-int main()
+int main(int argc, char **argv)
 {
-  cout << "start ..." << endl;
-  Board b(false);
-// #define SINGLE
-#ifdef SINGLE
-  auto start = std::chrono::system_clock::now();
-  steptest(b);
-  auto end = std::chrono::system_clock::now();
-  for (int i = 0; i < LIMIT; ++i)
-    cout << (i + 1) << ": " << k1[i] << endl;
-  cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << endl;
-#else
+  if (2 != argc)
+  {
+    cout << "please enter Limit" << endl;
+    exit(0);
+  }
+
+  int val = (int)(argv[1][0] - '0');
+  if (0 < val && val <= 10)
+    LIMIT = val;
+  else
+  {
+    cout << "not a valid number ([1..10])";
+    exit(0);
+  }
+
+  cout << "depth " << LIMIT << ":" << endl;
+  Board b(true);
+
   auto start = std::chrono::system_clock::now();
   auto res = steptest2(b);
   auto end = std::chrono::system_clock::now();
   for (int i = 0; i < LIMIT; ++i)
     cout << (i + 1) << ": " << res[i] << endl;
   cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << endl;
-#endif
-  int i;
-  cin >> i;
+
+  if (3 == argc)
+  {
+    int i;
+    cin >> i;
+  }
 }
 #else
+// bool Board::is_possible(int x1, int y1, int x2, int y2, bool _white_turn)
+// {
+//   if (is_possible_without_chess(x1, y1, x2, y2, _white_turn))
+//   {
+//     move_unsafe(x1, y1, x2, y2);
+
+//     const pair<int, int> king = (_white_turn) ? pos_king_black : pos_king_white;
+
+//     for (int y = 0; y < 8; ++y)
+//       for (int x = 0; x < 8; ++x)
+//         if (is_possible_without_chess(x, y, king.first, king.second, !_white_turn))
+//         {
+//           undoMove();
+//           return false;
+//         }
+//     undoMove();
+//     return true;
+//   }
+//   return false;
+// }
+
+// bool Board::move(int x1, int y1, int x2, int y2)
+// {
+//   if (y1 == y2 && ((x1 == 4 && x2 == 2) || (x1 == 4 && x2 == 6)) && (0 == y1 || 7 == y2))
+//   {
+//     move_unsafe(x1, y1, x2, y2); // ???
+//     move_unsafe(7, y1, 5, y2);
+//     bool_white_turn = !bool_white_turn;
+//     // return true ???
+//   }
+
+//   if (Bauer == board[y1][x1].type && ((y2 == 0) || y2 == 7))
+//   {
+//     board[y2][x2] = Figur(Dame, bool_white_turn);
+//     // "q" fehlt
+//   }
+
+//   bool is_pos = is_possible(x1, y1, x2, y2, bool_white_turn);
+//   if (is_pos)
+//     move_unsafe(x1, y1, x2, y2);
+
+//   return is_pos;
+// }
+
 #pragma region getScore
 typedef array<array<int, 8>, 8> arr2d;
 arr2d pawn{{{0, 0, 0, 0, 0, 0, 0, 0},
@@ -939,6 +997,38 @@ int main()
 #endif
 
 #pragma region garbage
+// vector<unsigned long> k1(LIMIT);
+// void steptest(Board &b, int n = 0)
+// {
+//   for (int y = 0; y < 8; ++y)
+//     for (int x = 0; x < 8; ++x)
+//       for (auto item : b.get_all_moves_speed(x, y, b.is_white_turn()))
+//       {
+//         b.move_unsafe(x, y, item.first, item.second);
+//         if (n < LIMIT - 1)
+//           steptest(b, n + 1);
+//         b.undoMove();
+//         ++k1[n];
+//       }
+// }
+
+// // #define SINGLE
+// #ifdef SINGLE
+//   auto start = std::chrono::system_clock::now();
+//   steptest(b);
+//   auto end = std::chrono::system_clock::now();
+//   for (int i = 0; i < LIMIT; ++i)
+//     cout << (i + 1) << ": " << k1[i] << endl;
+//   cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << endl;
+// #else
+//   auto start = std::chrono::system_clock::now();
+//   auto res = steptest2(b);
+//   auto end = std::chrono::system_clock::now();
+//   for (int i = 0; i < LIMIT; ++i)
+//     cout << (i + 1) << ": " << res[i] << endl;
+//   cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << endl;
+// #endif
+
 // vector<pair<int, int>> Board::get_all_moves_fast(int x1, int y1, bool _white_turn) const
 // {
 //   bool needDetail = false, needDetailKNOW = false;
@@ -1036,5 +1126,14 @@ int main()
 // 3: 8902
 // 4: 197281
 // 5: 4865609
-// 6: 119,060,324
-// 11616 ms
+// 6: 119060324
+// 11616 ms ~ 12s
+
+// 1: 20
+// 2: 400
+// 3: 8902
+// 4: 197281
+// 5: 4865609
+// 6: 119060324
+// 7: 3195901860
+// 408347 ms ~ 6min 48s
