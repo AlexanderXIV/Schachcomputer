@@ -76,46 +76,51 @@ int Board::getScore(bool _white_turn) const
   constexpr int INTINF = 1e7;
   // int special = 0;
   int score = 0;
+  // node.getScore(node.is_white_turn()) - node.getScore(!node.is_white_turn())
   // for (int y = 0; y < 8; ++y)
   //   for (int x = 0; x < 8; ++x)
   //     if (None != board[y][x].type && board[y][x].is_white == _white_turn && (board[y][x].type == Turm || board[y][x].type == Springer || board[y][x].type == Laeufer || board[y][x].type == Dame))
   //       ++special;
   for (int y = 0; y < 8; ++y)
     for (int x = 0; x < 8; ++x)
-      if (None != board[y][x].type && board[y][x].is_white == _white_turn)
+      if (None != board[y][x].type)
       {
+        const int y1 = (board[y][x].is_white) ? y : 7 - y;
+        int temp = 0;
         switch (board[y][x].type)
         {
-        case None:
-          break;
         case Turm:
-          score += 500;
-          score += rook[(_white_turn) ? y : 7 - y][x];
+          temp += 500;
+          temp += rook[y1][x];
           break;
         case Springer:
-          score += 300;
-          score += knight[(_white_turn) ? y : 7 - y][x];
+          temp += 300;
+          temp += knight[y1][x];
           break;
         case Laeufer:
-          score += 300;
-          score += bishop[(_white_turn) ? y : 7 - y][x];
+          temp += 300;
+          temp += bishop[y1][x];
           break;
         case Koenig:
-          // score += INTINF;
+          temp += INTINF;
           // if (special <= 1)
-          //   score += king_endgame[(_white_turn) ? y : 7 - y][x];
+          //   temp += king_endgame[y1][x];
           // else
-          score += king_game[(_white_turn) ? y : 7 - y][x];
+          temp += king_game[y1][x];
           break;
         case Dame:
-          score += 900;
-          score += queen[(_white_turn) ? y : 7 - y][x];
+          temp += 900;
+          temp += queen[y1][x];
           break;
         case Bauer:
-          score += 100;
-          score += pawn[(_white_turn) ? y : 7 - y][x];
+          temp += 100;
+          temp += pawn[y1][x];
           break;
         }
+        if (board[y][x].is_white == _white_turn)
+          score += temp;
+        else
+          score -= temp;
       }
   return score;
 }
