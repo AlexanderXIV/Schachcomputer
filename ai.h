@@ -41,8 +41,7 @@ arr2d rook{{{0, 0, 0, 0, 0, 0, 0, 0},
             {-5, 0, 0, 0, 0, 0, 0, -5},
             {-5, 0, 0, 0, 0, 0, 0, -5},
             {-5, 0, 0, 0, 0, 0, 0, -5},
-            {-5, 0, 0, 5, 5, 0, 0, -5}}};
-// {0, 0, 0, 5, 5, 0, 0, 0}}};
+            {0, 0, 0, 5, 5, 0, 0, 0}}};
 
 arr2d queen{{{-20, -10, -10, -5, -5, -10, -10, -20},
              {-10, 0, 0, 0, 0, 0, 0, -10},
@@ -59,10 +58,8 @@ arr2d king_game{{{-30, -40, -40, -50, -50, -40, -40, -30},
                  {-30, -40, -40, -50, -50, -40, -40, -30},
                  {-20, -30, -30, -40, -40, -30, -30, -20},
                  {-10, -20, -20, -20, -20, -20, -20, -10},
-                 {0, 0, 0, 0, 0, 0, 0, 0},
-                 //  {20, 20, 0, 0, 0, 0, 20, 20},
-                 {0, 0, 0, 0, 0, 0, 0, 0}}};
-//  {20, 30, 10, 0, 0, 10, 30, 20}}};
+                 {20, 20, 0, 0, 0, 0, 20, 20},
+                 {20, 30, 10, 0, 0, 10, 30, 20}}};
 
 arr2d king_endgame{{{-50, -40, -30, -20, -20, -30, -40, -50},
                     {-30, -20, -10, 0, 0, -10, -20, -30},
@@ -79,51 +76,46 @@ int Board::getScore(bool _white_turn) const
   constexpr int INTINF = 1e7;
   // int special = 0;
   int score = 0;
-  // node.getScore(node.is_white_turn()) - node.getScore(!node.is_white_turn())
   // for (int y = 0; y < 8; ++y)
   //   for (int x = 0; x < 8; ++x)
   //     if (None != board[y][x].type && board[y][x].is_white == _white_turn && (board[y][x].type == Turm || board[y][x].type == Springer || board[y][x].type == Laeufer || board[y][x].type == Dame))
   //       ++special;
   for (int y = 0; y < 8; ++y)
     for (int x = 0; x < 8; ++x)
-      if (None != board[y][x].type)
+      if (None != board[y][x].type && board[y][x].is_white == _white_turn)
       {
-        const int y1 = (board[y][x].is_white) ? y : 7 - y;
-        int temp = 0;
         switch (board[y][x].type)
         {
+        case None:
+          break;
         case Turm:
-          temp += 500;
-          temp += rook[y1][x];
+          score += 500;
+          score += rook[(_white_turn) ? y : 7 - y][x];
           break;
         case Springer:
-          temp += 300;
-          temp += knight[y1][x];
+          score += 300;
+          score += knight[(_white_turn) ? y : 7 - y][x];
           break;
         case Laeufer:
-          temp += 300;
-          temp += bishop[y1][x];
+          score += 300;
+          score += bishop[(_white_turn) ? y : 7 - y][x];
           break;
         case Koenig:
-          temp += INTINF;
+          // score += INTINF;
           // if (special <= 1)
-          //   temp += king_endgame[y1][x];
+          //   score += king_endgame[(_white_turn) ? y : 7 - y][x];
           // else
-          temp += king_game[y1][x];
+          score += king_game[(_white_turn) ? y : 7 - y][x];
           break;
         case Dame:
-          temp += 900;
-          temp += queen[y1][x];
+          score += 900;
+          score += queen[(_white_turn) ? y : 7 - y][x];
           break;
         case Bauer:
-          temp += 100;
-          temp += pawn[y1][x];
+          score += 100;
+          score += pawn[(_white_turn) ? y : 7 - y][x];
           break;
         }
-        if (board[y][x].is_white == _white_turn)
-          score += temp;
-        else
-          score -= temp;
       }
   return score;
 }

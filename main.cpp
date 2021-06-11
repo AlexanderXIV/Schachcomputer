@@ -19,6 +19,40 @@ using namespace std;
 #include "ai.h"
 
 #pragma region Test
+// void steptest_optimized(Board b, unsigned long *result, const int n = 0) // call-by-reference
+// {
+//   stack<pair<unsigned long *, future<void>>> stck;
+//   for (int y = 0; y < 8; ++y)
+//     for (int x = 0; x < 8; ++x)
+//       for (auto item : b.get_all_moves_speed(x, y, b.is_white_turn()))
+//       {
+//         if (n < LIMIT - 1)
+//         {
+//           b.move_unsafe(x, y, item.first, item.second);
+//           if (n == 0)
+//           {
+//             unsigned long *test = new unsigned long[LIMIT];
+//             for (int i = 0; i < LIMIT; ++i)
+//               test[i] = 0;
+//             stck.push({test, async(steptest_optimized, b, test, n + 1)});
+//           }
+//           else
+//             steptest_optimized(b, result, n + 1);
+//           b.undoMove();
+//         }
+//         ++result[n];
+//       }
+//   while (!stck.empty())
+//   {
+//     pair<unsigned long *, future<void>> &item = stck.top();
+//     item.second.get();
+//     for (int i = 0; i < LIMIT; ++i)
+//       result[i] += item.first[i];
+//     delete[] item.first;
+//     stck.pop();
+//   }
+// }
+
 vector<unsigned long> steptest2(Board b, const int LIMIT, const int n = 0)
 {
   stack<future<vector<unsigned long>>> stck;
@@ -108,6 +142,65 @@ void test()
 //   cout << chrono::duration_cast<chrono::milliseconds>(end - start).count() << " ms" << endl;
 // }
 // exit(0);
+
+// int main(int argc, char **argv)
+// {
+//   if (2 > argc)
+//   {
+//     cout << "please enter Limit" << endl;
+//     exit(0);
+//   }
+//   else
+//   {
+//     int val = (int)(argv[1][0] - '0');
+//     if (0 < val && val <= 10)
+//       LIMIT = val;
+//     else
+//     {
+//       cout << "not a valid number ([1..10])";
+//       exit(0);
+//     }
+//   }
+
+//   cout << "depth " << LIMIT << ":" << endl;
+//   Board b(false);
+//   if (3 == argc)
+//   {
+//     string str(argv[2]);
+//     b = Board(str);
+//   }
+
+//   {
+//       // unsigned long *result = new unsigned long[LIMIT];
+//       // for (int i = 0; i < LIMIT; ++i)
+//       //   result[i] = 0;
+//       // auto start = std::chrono::system_clock::now();
+//       // steptest_optimized(b, result);
+//       // auto end = std::chrono::system_clock::now();
+//       // for (int i = 0; i < LIMIT; ++i)
+//       //   cout << (i + 1) << ": " << result[i] << endl;
+//       // delete[] result;
+//       // cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << endl;
+//   }
+
+//   {
+//     auto start = std::chrono::system_clock::now();
+//     // steptest(b);
+//     auto res = steptest2(b);
+//     auto end = std::chrono::system_clock::now();
+//     for (int i = 0; i < LIMIT; ++i)
+//       cout << (i + 1) << ": " << res[i] << endl;
+//     cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << endl;
+//   }
+
+//   // test();
+
+//   if (4 == argc)
+//   {
+//     int i;
+//     cin >> i;
+//   }
+// }
 #pragma endregion
 
 int main()
